@@ -27,48 +27,59 @@
             ],
             "bindings": [
                 {
-                    "name": "",
-                    "id": "0b61821f-84a3-4bfd-8b12-3d69f1c52c63",
+                    "name": "2D Vector",
+                    "id": "2026de81-a160-40ba-8f22-42188a51d5a3",
+                    "path": "2DVector",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": "",
+                    "action": "Navigate",
+                    "isComposite": true,
+                    "isPartOfComposite": false
+                },
+                {
+                    "name": "up",
+                    "id": "1aff5416-3be1-453e-94cf-4f6efd0246b7",
                     "path": "<Keyboard>/upArrow",
                     "interactions": "",
                     "processors": "",
                     "groups": "",
                     "action": "Navigate",
                     "isComposite": false,
-                    "isPartOfComposite": false
+                    "isPartOfComposite": true
                 },
                 {
-                    "name": "",
-                    "id": "5e9e0e74-a228-4f97-b5da-800141d7aa28",
+                    "name": "up",
+                    "id": "fce4691d-a65c-47cb-813d-9d2945587de8",
                     "path": "<Keyboard>/w",
                     "interactions": "",
                     "processors": "",
                     "groups": "",
                     "action": "Navigate",
                     "isComposite": false,
-                    "isPartOfComposite": false
+                    "isPartOfComposite": true
                 },
                 {
-                    "name": "",
-                    "id": "087f2b80-0962-4300-9ae3-0c122d228a50",
+                    "name": "down",
+                    "id": "21ba4455-16e4-41bd-b271-c75f61e8df8f",
                     "path": "<Keyboard>/downArrow",
                     "interactions": "",
                     "processors": "",
                     "groups": "",
                     "action": "Navigate",
                     "isComposite": false,
-                    "isPartOfComposite": false
+                    "isPartOfComposite": true
                 },
                 {
-                    "name": "",
-                    "id": "f5803622-e37f-411f-9887-54a53b1e598d",
+                    "name": "down",
+                    "id": "a9001bfe-e647-40f8-98b5-d53d9eeae23d",
                     "path": "<Keyboard>/s",
                     "interactions": "",
                     "processors": "",
                     "groups": "",
                     "action": "Navigate",
                     "isComposite": false,
-                    "isPartOfComposite": false
+                    "isPartOfComposite": true
                 },
                 {
                     "name": "",
