@@ -3,6 +3,8 @@ using UnityEngine;
 public class BubbleProjectile : MonoBehaviour
 {
     Rigidbody2D rb;
+    Collider2D col;
+
     ObjectPool pool;
     string poolKey;
 
@@ -12,19 +14,32 @@ public class BubbleProjectile : MonoBehaviour
     float lifeTimer;
     GameObject owner;
 
+    bool rising;
+
+    [Header("Layer Masks")]
+    [SerializeField] private LayerMask wallMask;
+    [SerializeField] private LayerMask playerMask;
+
+    [Header("Pop Effect")]
+    [SerializeField] private GameObject popEffectPrefab;
+
     void Awake()
     {
         rb = GetComponent<Rigidbody2D>();
-        rb.gravityScale = 0f;
+        col = GetComponent<Collider2D>();
+
+        if (rb)
+        {
+            rb.bodyType = RigidbodyType2D.Kinematic;
+            rb.gravityScale = 0f;
+            rb.simulated = true;
+        }
+
+        // ✅ Trigger로 통일해서 판정만 사용
+        if (col) col.isTrigger = true;
     }
 
-    public void Fire(
-        AttackProfile p,
-        float direction,
-        GameObject owner,
-        string poolKey,
-        ObjectPool pool
-    )
+    public void Fire(AttackProfile p, float direction, GameObject owner, string poolKey, ObjectPool pool)
     {
         this.profile = p;
         this.dir = Mathf.Sign(direction);
@@ -34,11 +49,15 @@ public class BubbleProjectile : MonoBehaviour
 
         spawnPos = transform.position;
         lifeTimer = 0f;
+        rising = false;
 
-        float s = profile.startScale;
-        transform.localScale = Vector3.one * s;
+        if (col) col.enabled = true;
 
-        rb.linearVelocity = new Vector2(profile.speed * dir, profile.riseSpeed);
+        transform.localScale = Vector3.one * profile.startScale;
+
+        if (rb)
+            rb.linearVelocity = new Vector2(profile.speed * dir, 0f);
+
         gameObject.SetActive(true);
     }
 
@@ -53,54 +72,72 @@ public class BubbleProjectile : MonoBehaviour
             return;
         }
 
-        rb.linearVelocity = new Vector2(profile.speed * dir, profile.riseSpeed);
-
         float dist = Vector3.Distance(spawnPos, transform.position);
-        float t = Mathf.Clamp01(dist / profile.maxDistance);
-        float scale = Mathf.Lerp(profile.startScale, profile.endScale, t);
-        transform.localScale = Vector3.one * scale;
 
-        if (dist >= profile.maxDistance)
-            Pop();
+        if (!rising && dist >= profile.maxDistance)
+            rising = true;
+
+        if (rb)
+        {
+            rb.linearVelocity = rising
+                ? new Vector2(0f, profile.riseSpeed)
+                : new Vector2(profile.speed * dir, 0f);
+        }
+
+        float t = Mathf.Clamp01(dist / profile.maxDistance);
+        transform.localScale = Vector3.one * Mathf.Lerp(profile.startScale, profile.endScale, t);
     }
 
-    void OnCollisionEnter2D(Collision2D c)
+    void OnTriggerEnter2D(Collider2D other)
     {
-        if (c.collider.CompareTag("Wall"))
+        int otherLayer = other.gameObject.layer;
+
+        //  Wall이면 즉시 Pop
+        if (((1 << otherLayer) & wallMask) != 0)
         {
             Pop();
             return;
         }
 
-        if (owner != null && c.collider.gameObject == owner)
+        //  Player면 상호작용 (owner만)
+        if (owner && other.gameObject == owner && ((1 << otherLayer) & playerMask) != 0)
         {
-            float py = owner.transform.position.y;
-            float by = transform.position.y;
+            HandlePlayerInteraction(owner);
+        }
+    }
 
-            var prb = owner.GetComponent<Rigidbody2D>();
-            float pvy = prb ? prb.linearVelocity.y : 0f;
+    void HandlePlayerInteraction(GameObject player)
+    {
+        var prb = player.GetComponent<Rigidbody2D>();
+        if (!prb) return;
 
-            // 아래에서 위로 치면 터짐
-            if (py < by && pvy > 0f)
-            {
-                Pop();
-                return;
-            }
+        float py = player.transform.position.y;
+        float by = transform.position.y;
+        float pvy = prb.linearVelocity.y;
 
-            // 위에서 밟으면 콩콩
-            if (py > by && pvy <= 0f && prb)
-            {
-                prb.linearVelocity = new Vector2(prb.linearVelocity.x, 0f);
-                prb.AddForce(Vector2.up * 12f, ForceMode2D.Impulse);
-            }
+        // 아래에서 위로 치면 터짐
+        if (py < by && pvy > 0f)
+        {
+            Pop();
+            return;
+        }
+
+        // 위에서 밟으면 콩콩
+        if (py > by && pvy <= 0f)
+        {
+            prb.linearVelocity = new Vector2(prb.linearVelocity.x, 0f);
+            prb.AddForce(Vector2.up * 12f, ForceMode2D.Impulse);
         }
     }
 
     void Pop()
     {
-        if (pool != null)
-            pool.Release(poolKey, gameObject);
-        else
-            Destroy(gameObject);
+        if (col) col.enabled = false;
+
+        if (popEffectPrefab)
+            Instantiate(popEffectPrefab, transform.position, Quaternion.identity);
+
+        if (pool != null) pool.Release(poolKey, gameObject);
+        else Destroy(gameObject);
     }
 }

@@ -41,7 +41,7 @@ GameObject:
   m_Component:
   - component: {fileID: 2513344456395416420}
   m_Layer: 0
-  m_Name: FirePoint
+  m_Name: FirePointR
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -56,7 +56,7 @@ Transform:
   m_GameObject: {fileID: 7488243947241835074}
   serializedVersion: 2
   m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
-  m_LocalPosition: {x: 0.385, y: -0.122, z: 0}
+  m_LocalPosition: {x: 0.385, y: -0.05, z: 0}
   m_LocalScale: {x: 1.1666665, y: 1.1666665, z: 1.1666665}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -76,7 +76,7 @@ GameObject:
   - component: {fileID: -6916914141559317611}
   - component: {fileID: 9159021206504842962}
   - component: {fileID: 2118860174109110736}
-  m_Layer: 0
+  m_Layer: 3
   m_Name: Player1
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -97,6 +97,7 @@ Transform:
   m_ConstrainProportionsScale: 1
   m_Children:
   - {fileID: 2513344456395416420}
+  - {fileID: 2041856361971379469}
   - {fileID: 7385171226563318698}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
@@ -195,32 +196,40 @@ MonoBehaviour:
   jumpActionName: Player1_Jump
   attackActionName: Player1_Attack
   moveSpeed: 5
-  jumpForce: 12
-  groundCheck: {fileID: 7385171226563318698}
-  groundCheckRadius: 0.12
-  groundCheckDistance: 0.08
+  jumpVelocity: 12
+  gravity: -30
+  maxFallSpeed: -20
+  maxRiseSpeed: 18
+  bodyCollider: {fileID: 2118860174109110736}
   groundMask:
     serializedVersion: 2
-    m_Bits: 64
+    m_Bits: 576
   oneWayMask:
     serializedVersion: 2
     m_Bits: 256
-  minGroundNormalY: 0.65
+  groundCastDistance: 0.08
+  ceilingMask:
+    serializedVersion: 2
+    m_Bits: 512
+  ceilingCastDistance: 0.06
+  skin: 0.01
+  wallMask:
+    serializedVersion: 2
+    m_Bits: 512
   sleepAfterSeconds: 8
   invincibleSeconds: 1
   blinkInterval: 0.12
   currentAttack: {fileID: 11400000, guid: eba1e0a0aaed4824b99ea7c985fcc3c2, type: 2}
-  firePoint: {fileID: 2513344456395416420}
   attackCooldown: 0.25
-  dieDisableDelay: 0.6
+  attackAnimLock: 0.12
+  firePointR: {fileID: 2513344456395416420}
+  firePointL: {fileID: 2041856361971379469}
   rb: {fileID: 9159021206504842962}
   anim: {fileID: 7262768352654545262}
   sr: {fileID: 762681257048002514}
-  bodyCollider: {fileID: 2118860174109110736}
   objectPool: {fileID: 0}
   bubblePoolKey: Bubble
-  gravity: -30
-  maxFallSpeed: -20
+  dieDisableDelay: 0.6
 --- !u!50 &9159021206504842962
 Rigidbody2D:
   serializedVersion: 5
@@ -294,3 +303,34 @@ BoxCollider2D:
   m_AutoTiling: 0
   m_Size: {x: 0.78125, y: 0.78125}
   m_EdgeRadius: 0
+--- !u!1 &7946882085302643822
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 2041856361971379469}
+  m_Layer: 0
+  m_Name: FirePointL
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &2041856361971379469
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7946882085302643822}
+  serializedVersion: 2
+  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
+  m_LocalPosition: {x: -0.374, y: -0.05, z: 0}
+  m_LocalScale: {x: 1.1666665, y: 1.1666665, z: 1.1666665}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 7912337870839117798}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
