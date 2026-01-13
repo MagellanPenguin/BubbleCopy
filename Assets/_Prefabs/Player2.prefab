@@ -14,7 +14,7 @@ GameObject:
   - component: {fileID: 3465573685593494960}
   - component: {fileID: -3720990586030982601}
   - component: {fileID: 7737705382843177417}
-  m_Layer: 0
+  m_Layer: 3
   m_Name: Player2
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -230,6 +230,8 @@ MonoBehaviour:
   bubblePoolKey: Bubble
   gravity: -30
   maxFallSpeed: -20
+  firePointR: {fileID: 0}
+  firePointL: {fileID: 0}
 --- !u!1 &2306417091977604398
 GameObject:
   m_ObjectHideFlags: 0

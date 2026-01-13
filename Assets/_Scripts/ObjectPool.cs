@@ -3,6 +3,8 @@ using UnityEngine;
 
 public class ObjectPool : MonoBehaviour
 {
+    public static ObjectPool Instance { get; private set; }
+
     [System.Serializable]
     public class PoolItem
     {
@@ -18,9 +20,27 @@ public class ObjectPool : MonoBehaviour
 
     void Awake()
     {
+        // ===== Singleton 처리 =====
+        if (Instance != null && Instance != this)
+        {
+            Destroy(gameObject);
+            return;
+        }
+
+        Instance = this;
+        DontDestroyOnLoad(gameObject); // 씬 전환 시 유지 (원하면 제거 가능)
+
+        // ===== Pool 초기화 =====
         foreach (var it in items)
         {
-            if (it == null || string.IsNullOrEmpty(it.key) || it.prefab == null) continue;
+            if (it == null || string.IsNullOrEmpty(it.key) || it.prefab == null)
+                continue;
+
+            if (pool.ContainsKey(it.key))
+            {
+                Debug.LogWarning($"[ObjectPool] Duplicate key ignored: {it.key}");
+                continue;
+            }
 
             prefabs[it.key] = it.prefab;
             var q = new Queue<GameObject>();
@@ -35,10 +55,14 @@ public class ObjectPool : MonoBehaviour
         }
     }
 
+    // ===== 가져오기 =====
     public GameObject Get(string key, Vector3 pos, Quaternion rot)
     {
         if (!pool.TryGetValue(key, out var q))
-            throw new System.Exception($"Pool key not found: {key}");
+        {
+            Debug.LogError($"[ObjectPool] Pool key not found: {key}");
+            return null;
+        }
 
         GameObject go;
         if (q.Count > 0)
@@ -48,7 +72,10 @@ public class ObjectPool : MonoBehaviour
         else
         {
             if (!prefabs.TryGetValue(key, out var pf))
-                throw new System.Exception($"Prefab not found for key: {key}");
+            {
+                Debug.LogError($"[ObjectPool] Prefab not found for key: {key}");
+                return null;
+            }
             go = Instantiate(pf, transform);
         }
 
@@ -57,19 +84,20 @@ public class ObjectPool : MonoBehaviour
         return go;
     }
 
+    // ===== 되돌리기 =====
     public void Release(string key, GameObject go)
     {
         if (go == null) return;
-        go.SetActive(false);
-        go.transform.SetParent(transform);
 
         if (!pool.TryGetValue(key, out var q))
         {
-            // key가 잘못되면 그냥 파괴(실수 방지)
+            Debug.LogWarning($"[ObjectPool] Release failed, key not found: {key}");
             Destroy(go);
             return;
         }
 
+        go.SetActive(false);
+        go.transform.SetParent(transform);
         q.Enqueue(go);
     }
 }
