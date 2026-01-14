@@ -203,7 +203,7 @@ MonoBehaviour:
   bodyCollider: {fileID: 2118860174109110736}
   groundMask:
     serializedVersion: 2
-    m_Bits: 576
+    m_Bits: 192
   oneWayMask:
     serializedVersion: 2
     m_Bits: 256
@@ -212,10 +212,6 @@ MonoBehaviour:
     serializedVersion: 2
     m_Bits: 512
   ceilingCastDistance: 0.06
-  skin: 0.01
-  wallMask:
-    serializedVersion: 2
-    m_Bits: 512
   sleepAfterSeconds: 8
   invincibleSeconds: 1
   blinkInterval: 0.12
@@ -230,6 +226,14 @@ MonoBehaviour:
   objectPool: {fileID: 0}
   bubblePoolKey: Bubble
   dieDisableDelay: 0.6
+  groundCheck: {fileID: 7385171226563318698}
+  groundCheckSize: {x: 0.5, y: 0.08}
+  groundSnapSkin: 0.01
+  maxSnapUp: 0.25
+  bubbleMask:
+    serializedVersion: 2
+    m_Bits: 128
+  snapMaxDistance: 0.25
 --- !u!50 &9159021206504842962
 Rigidbody2D:
   serializedVersion: 5

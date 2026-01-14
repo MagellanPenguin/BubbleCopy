@@ -12,13 +12,11 @@ public class BubbleProjectile : MonoBehaviour
     float dir;
     Vector3 spawnPos;
     float lifeTimer;
-    GameObject owner;
 
     bool rising;
 
     [Header("Layer Masks")]
     [SerializeField] private LayerMask wallMask;
-    [SerializeField] private LayerMask playerMask;
 
     [Header("Pop Effect")]
     [SerializeField] private GameObject popEffectPrefab;
@@ -35,15 +33,15 @@ public class BubbleProjectile : MonoBehaviour
             rb.simulated = true;
         }
 
-        // ✅ Trigger로 통일해서 판정만 사용
+        // ✅ groundCheck로만 밟을 거면 Trigger 권장(물리 충돌 불필요)
         if (col) col.isTrigger = true;
     }
 
     public void Fire(AttackProfile p, float direction, GameObject owner, string poolKey, ObjectPool pool)
     {
-        this.profile = p;
-        this.dir = Mathf.Sign(direction);
-        this.owner = owner;
+        profile = p;
+        dir = Mathf.Sign(direction);
+
         this.poolKey = poolKey;
         this.pool = pool;
 
@@ -90,43 +88,10 @@ public class BubbleProjectile : MonoBehaviour
 
     void OnTriggerEnter2D(Collider2D other)
     {
-        int otherLayer = other.gameObject.layer;
-
-        //  Wall이면 즉시 Pop
-        if (((1 << otherLayer) & wallMask) != 0)
+        // 벽 닿으면 Pop만
+        if (((1 << other.gameObject.layer) & wallMask) != 0)
         {
             Pop();
-            return;
-        }
-
-        //  Player면 상호작용 (owner만)
-        if (owner && other.gameObject == owner && ((1 << otherLayer) & playerMask) != 0)
-        {
-            HandlePlayerInteraction(owner);
-        }
-    }
-
-    void HandlePlayerInteraction(GameObject player)
-    {
-        var prb = player.GetComponent<Rigidbody2D>();
-        if (!prb) return;
-
-        float py = player.transform.position.y;
-        float by = transform.position.y;
-        float pvy = prb.linearVelocity.y;
-
-        // 아래에서 위로 치면 터짐
-        if (py < by && pvy > 0f)
-        {
-            Pop();
-            return;
-        }
-
-        // 위에서 밟으면 콩콩
-        if (py > by && pvy <= 0f)
-        {
-            prb.linearVelocity = new Vector2(prb.linearVelocity.x, 0f);
-            prb.AddForce(Vector2.up * 12f, ForceMode2D.Impulse);
         }
     }
 
