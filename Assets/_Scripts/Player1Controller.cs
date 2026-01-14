@@ -21,26 +21,20 @@ public class Player1Controller : MonoBehaviour, IPlayerRevive
     [SerializeField] private float moveSpeed = 5f;
 
     [Header("Kinematic Jump/Gravity")]
-    [SerializeField] private float jumpVelocity = 15f;     // ✅ 기본값 상향(너무 낮은 점프 방지)
-    [SerializeField] private float gravity = -24f;         // ✅ 너무 강하면 점프가 짧아짐
+    [SerializeField] private float jumpVelocity = 15f;
+    [SerializeField] private float gravity = -24f;
     [SerializeField] private float maxFallSpeed = -25f;
     [SerializeField] private float maxRiseSpeed = 18f;
 
     [Header("Ground Check (Collider Cast)")]
     [SerializeField] private Collider2D bodyCollider;
-    [SerializeField] private LayerMask groundMask;  // Wall + Ground
+    [SerializeField] private LayerMask groundMask;  // Ground + Wall
     [SerializeField] private LayerMask oneWayMask;  // OneWay
-    [SerializeField] private float groundCastDistance = 0.05f; // ✅ 조금 줄임(붙어있음 방지)
+    [SerializeField] private float groundCastDistance = 0.06f;
 
     [Header("Ceiling Check")]
-    [SerializeField] private LayerMask ceilingMask;        // ✅ Wall만 추천(OneWay 절대 X)
+    [SerializeField] private LayerMask ceilingMask;        // Wall 추천(OneWay X)
     [SerializeField] private float ceilingCastDistance = 0.06f;
-
-    [Header("Kinematic Collision Solve")]
-    [SerializeField] private float skin = 0.01f; // 벽/바닥에 살짝 띄우기(끼임/통과 방지)
-
-    [Header("Collision Masks")]
-    [SerializeField] private LayerMask wallMask; // ✅ Wall만 넣기(옆/천장 막기용)
 
     [Header("Idle/Sleep")]
     [SerializeField] private float sleepAfterSeconds = 8f;
@@ -72,15 +66,13 @@ public class Player1Controller : MonoBehaviour, IPlayerRevive
     [Header("Death")]
     [SerializeField] private float dieDisableDelay = 0.6f;
 
-    [Header("Jump Assist")]
-    [SerializeField] private float coyoteTime = 0.08f;     // 바닥 떠난 뒤도 잠깐 점프 허용
-    [SerializeField] private float jumpBuffer = 0.10f;     // 점프 입력 저장
-
-    [Header("Depenetration")]
-    [SerializeField] private float depenetrationDistance = 0.02f;
-
-    float lastGroundedTime = -999f;
-    float lastJumpPressedTime = -999f;
+    [Header("GroundCheck Only")]
+    [SerializeField] private Transform groundCheck;
+    [SerializeField] private Vector2 groundCheckSize = new Vector2(0.5f, 0.08f); // 발바닥 박스
+    [SerializeField] private float groundSnapSkin = 0.01f;                       // 바닥에 살짝 띄우기
+    [SerializeField] private float maxSnapUp = 0.25f;                             // 파고들었을 때 올리는 최대치
+    [SerializeField] private LayerMask bubbleMask; // BubbleGround 레이어
+    [SerializeField] private float snapMaxDistance = 0.25f;
 
     const string ANIM_IDLE = "1P_Idle";
     const string ANIM_WALK = "1P_Walk";
@@ -102,11 +94,10 @@ public class Player1Controller : MonoBehaviour, IPlayerRevive
 
     Vector2 moveInput;
 
-    // ✅ 키네틱 물리 상태값(우리가 직접 관리)
+    // ✅ 수동 중력용 y속도
     float vy = 0f;
 
-    // Cast buffer
-    RaycastHit2D[] castHits = new RaycastHit2D[8];
+    RaycastHit2D[] hits = new RaycastHit2D[6];
 
     void Reset()
     {
@@ -124,12 +115,11 @@ public class Player1Controller : MonoBehaviour, IPlayerRevive
         if (!bodyCollider) bodyCollider = GetComponent<Collider2D>();
         if (!objectPool) objectPool = ObjectPool.Instance;
 
-        // ✅ Kinematic 고정
         rb.bodyType = RigidbodyType2D.Kinematic;
         rb.simulated = true;
         rb.useFullKinematicContacts = true;
 
-        // ✅ 더 안정적으로(옵션)
+        // ✅ 충돌 안정
         rb.collisionDetectionMode = CollisionDetectionMode2D.Continuous;
         rb.interpolation = RigidbodyInterpolation2D.Interpolate;
 
@@ -168,7 +158,6 @@ public class Player1Controller : MonoBehaviour, IPlayerRevive
             if (inputBound) return;
             moveAction.Enable(); jumpAction.Enable(); attackAction.Enable();
 
-            // ✅ 점프는 started(1회) 권장
             jumpAction.started += OnJump;
             attackAction.performed += OnAttack;
 
@@ -200,50 +189,38 @@ public class Player1Controller : MonoBehaviour, IPlayerRevive
 
     void FixedUpdate()
     {
-        Depenetrate();
-
         if (state == State.Die) return;
 
-        // 슬립/빅토리면 정지
-        if (state == State.Sleep || state == State.Victory)
-        {
-            rb.linearVelocity = Vector2.zero;
-            return;
-        }
-
+        // 1) 입력
         float x = moveInput.x;
 
-        // 방향
         if (Mathf.Abs(x) > 0.01f)
         {
             if (x > 0 && !facingRight) Flip(true);
             else if (x < 0 && facingRight) Flip(false);
         }
 
-        // ===== 1) 바닥 체크(프레임 시작) =====
+        // 2) 바닥판정
         grounded = IsGrounded();
 
-        // ===== 2) 중력 적용(키네틱) =====
-        if (grounded && vy <= 0f)
-        {
-            vy = 0f;
-        }
+        // 3) 중력
+        if (grounded && vy <= 0f) vy = 0f;
         else
         {
             vy += gravity * Time.fixedDeltaTime;
             vy = Mathf.Clamp(vy, maxFallSpeed, maxRiseSpeed);
         }
 
-        // ===== 3) 이동량 계산 =====
-        Vector2 delta = new Vector2(x * moveSpeed, vy) * Time.fixedDeltaTime;
+        // 4) 이동 적용 (일단 기존대로 속도)
+        rb.linearVelocity = new Vector2(x * moveSpeed, vy);
 
-        // ===== 4) Cast 기반 이동(벽 통과 방지) =====
-        MoveWithCasts(delta);
+        // 5) 착지 스냅 (상승 중엔 안 함 => 원웨이 머리 걸림 방지)
+        SnapToGround();
 
-        // ===== 5) 이동 후 바닥 재체크(착지 반영) =====
+        // 6) 스냅 후 grounded 갱신
         grounded = IsGrounded();
 
-        // ===== 6) 상태 전환 (Attack 락 동안 덮어쓰기 금지) =====
+        // 7) 상태
         if (Time.time >= attackLockUntil)
         {
             if (!grounded)
@@ -256,116 +233,6 @@ public class Player1Controller : MonoBehaviour, IPlayerRevive
                 else SetState(State.Idle);
             }
         }
-
-        if (grounded) lastGroundedTime = Time.time;
-
-        // ✅ 버퍼/코요테로 점프 판정
-        bool canJump = (Time.time - lastGroundedTime) <= coyoteTime;
-        bool hasJumpBuffered = (Time.time - lastJumpPressedTime) <= jumpBuffer;
-
-        if (hasJumpBuffered && canJump)
-        {
-            vy = jumpVelocity;
-            lastJumpPressedTime = -999f; // 버퍼 소모
-            grounded = false;
-            SetState(State.Jump);
-        }
-
-    }
-    void MoveWithCasts(Vector2 delta)
-    {
-        if (!bodyCollider) return;
-
-        Vector2 pos = rb.position;
-
-        // ---------- 수평(벽만 막기) ----------
-        if (Mathf.Abs(delta.x) > 0.00001f)
-        {
-            Vector2 dir = new Vector2(Mathf.Sign(delta.x), 0f);
-
-            ContactFilter2D filter = new ContactFilter2D();
-            filter.useLayerMask = true;
-
-            // ✅ wallMask 비었으면(0) groundMask로 대체(인스펙터 실수 방지)
-            LayerMask xMask = (wallMask != 0) ? wallMask : groundMask;
-
-            filter.layerMask = xMask;
-            filter.useTriggers = false;
-
-            float want = Mathf.Abs(delta.x);
-            float dist = want + skin;
-
-            int cnt = bodyCollider.Cast(dir, filter, castHits, dist);
-
-            float move = want;
-            if (cnt > 0)
-            {
-                float min = float.MaxValue;
-                for (int i = 0; i < cnt; i++)
-                {
-                    // ✅ 바닥(위쪽 노말)을 수평벽으로 오판하는 걸 줄이기:
-                    // 벽에 가까운 hit만 채택 (normal.x가 큰 것)
-                    if (Mathf.Abs(castHits[i].normal.x) < 0.5f) continue;
-
-                    if (castHits[i].distance < min)
-                        min = castHits[i].distance;
-                }
-
-                if (min != float.MaxValue)
-                    move = Mathf.Max(0f, min - skin);
-            }
-
-            pos.x += dir.x * move;
-        }
-
-        // ---------- 수직 ----------
-        if (Mathf.Abs(delta.y) > 0.00001f)
-        {
-            Vector2 dir = new Vector2(0f, Mathf.Sign(delta.y));
-
-            ContactFilter2D filter = new ContactFilter2D();
-            filter.useLayerMask = true;
-            filter.useTriggers = false;
-
-            if (dir.y > 0f)
-            {
-                // ✅ 위로: 천장은 wallMask로 막기(원웨이 절대 X)
-                filter.layerMask = wallMask;
-            }
-            else
-            {
-                // ✅ 아래로: groundMask + (떨어질 때만) 원웨이
-                LayerMask mask = groundMask;
-                if (vy <= 0f) mask |= oneWayMask;
-                filter.layerMask = mask;
-            }
-
-            float want = Mathf.Abs(delta.y);
-            float dist = want + skin;
-
-            int cnt = bodyCollider.Cast(dir, filter, castHits, dist);
-
-            float move = want;
-            if (cnt > 0)
-            {
-                float min = float.MaxValue;
-                for (int i = 0; i < cnt; i++)
-                {
-                    if (castHits[i].distance < min)
-                        min = castHits[i].distance;
-                }
-
-                move = Mathf.Max(0f, min - skin);
-
-                // ✅ 막히면 vy 끊기
-                if (dir.y > 0f) vy = 0f;
-                else if (vy < 0f) vy = 0f;
-            }
-
-            pos.y += dir.y * move;
-        }
-
-        rb.MovePosition(pos);
     }
 
     void OnJump(InputAction.CallbackContext ctx)
@@ -378,10 +245,12 @@ public class Player1Controller : MonoBehaviour, IPlayerRevive
             SetState(State.Idle);
         }
 
-        // ✅ 입력을 저장만 해둠
-        lastJumpPressedTime = Time.time;
-    }
+        // 입력 순간 grounded 재검사
+        if (!IsGrounded()) return;
 
+        vy = jumpVelocity;
+        SetState(State.Jump);
+    }
 
     void OnAttack(InputAction.CallbackContext ctx)
     {
@@ -422,37 +291,16 @@ public class Player1Controller : MonoBehaviour, IPlayerRevive
 
     bool IsGrounded()
     {
-        if (!bodyCollider) return false;
+        if (!groundCheck) return false;
 
-        ContactFilter2D filter = new ContactFilter2D();
-        filter.useLayerMask = true;
+        LayerMask mask = groundMask | bubbleMask;
+        if (vy <= 0f) mask |= oneWayMask;
 
-        LayerMask mask = groundMask;
-
-        // ✅ 원웨이: 떨어질 때만 바닥 취급
-        if (vy <= 0f)
-            mask |= oneWayMask;
-
-        filter.layerMask = mask;
-        filter.useTriggers = false;
-
-        int hitCount = bodyCollider.Cast(Vector2.down, filter, castHits, groundCastDistance);
-        return hitCount > 0;
+        Collider2D col = Physics2D.OverlapBox(groundCheck.position, groundCheckSize, 0f, mask);
+        return col != null;
     }
 
-    bool HitCeiling()
-    {
-        if (!bodyCollider) return false;
-        if (ceilingMask == 0) return false;
 
-        ContactFilter2D filter = new ContactFilter2D();
-        filter.useLayerMask = true;
-        filter.layerMask = ceilingMask;
-        filter.useTriggers = false;
-
-        int hitCount = bodyCollider.Cast(Vector2.up, filter, castHits, ceilingCastDistance);
-        return hitCount > 0;
-    }
 
     void UpdateAnimation()
     {
@@ -489,7 +337,6 @@ public class Player1Controller : MonoBehaviour, IPlayerRevive
         if (sr) sr.flipX = !toRight;
     }
 
-    // ====== 사망/무적은 기존 유지 ======
     public void Die()
     {
         if (state == State.Die) return;
@@ -558,44 +405,49 @@ public class Player1Controller : MonoBehaviour, IPlayerRevive
         if (newProfile) currentAttack = newProfile;
     }
 
-    void Depenetrate()
+    void SnapToGround()
     {
-        if (!bodyCollider) return;
+        if (!groundCheck) return;
+        if (vy > 0f) return; // 상승 중엔 스냅 금지
 
-        // 벽/바닥/원웨이 포함 전부에서 겹침 풀기
-        LayerMask allMask = groundMask | oneWayMask | wallMask;
+        LayerMask mask = groundMask | bubbleMask;
+        if (vy <= 0f) mask |= oneWayMask;
 
-        Collider2D[] overlaps = new Collider2D[8];
-        ContactFilter2D filter = new ContactFilter2D();
-        filter.useLayerMask = true;
-        filter.layerMask = allMask;
-        filter.useTriggers = false;
+        RaycastHit2D hit = Physics2D.BoxCast(
+            groundCheck.position,
+            groundCheckSize,
+            0f,
+            Vector2.down,
+            snapMaxDistance,
+            mask
+        );
 
-        int count = bodyCollider.Overlap(filter, overlaps);
-        if (count <= 0) return;
+        if (!hit.collider) return;
 
-        // 가장 흔한 케이스: 벽 안에 살짝 파고든 상태 -> X축으로 빼내기
-        // facing 방향 반대로 살짝 밀어내기(간단/실용)
-        float push = depenetrationDistance;
-        Vector2 p = rb.position;
+        float desiredY = hit.point.y + groundSnapSkin;
+        float diff = desiredY - groundCheck.position.y;
 
-        // 양쪽 다 시도해서 빠지는 쪽 채택
-        if (!WouldOverlapAt(p + Vector2.right * push, filter))
-            rb.position = p + Vector2.right * push;
-        else if (!WouldOverlapAt(p + Vector2.left * push, filter))
-            rb.position = p + Vector2.left * push;
+        if (diff > 0f && diff <= snapMaxDistance)
+        {
+            transform.position += new Vector3(0f, diff, 0f);
+            vy = 0f;
+
+            var v = rb.linearVelocity;
+            v.y = 0f;
+            rb.linearVelocity = v;
+        }
+    }
+    public void SetControlEnabled(bool enable)
+    {
+        EnableInputs(enable);
+
+        if (!enable && rb)
+        {
+            rb.linearVelocity = Vector2.zero;
+            // vy 쓰면 같이 0으로(공중/원웨이 꼬임 방지)
+            // vy = 0f;
+        }
     }
 
-    bool WouldOverlapAt(Vector2 testPos, ContactFilter2D filter)
-    {
-        Vector2 old = rb.position;
-        rb.position = testPos;
-
-        Collider2D[] buf = new Collider2D[4];
-        int c = bodyCollider.Overlap(filter, buf);
-
-        rb.position = old;
-        return c > 0;
-    }
 
 }
