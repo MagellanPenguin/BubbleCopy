@@ -30,18 +30,16 @@ public class Player1Controller : MonoBehaviour, IPlayerRevive
     [SerializeField] private Collider2D bodyCollider;
     [SerializeField] private LayerMask groundMask;  // Ground + Wall
     [SerializeField] private LayerMask oneWayMask;  // OneWay
-    [SerializeField] private float groundCastDistance = 0.06f;
-
+    
     [Header("Ceiling Check")]
-    [SerializeField] private LayerMask ceilingMask;        // Wall 추천(OneWay X)
-    [SerializeField] private float ceilingCastDistance = 0.06f;
-
+    [SerializeField] private LayerMask ceilingMask;        // Wall 
+    
     [Header("Idle/Sleep")]
     [SerializeField] private float sleepAfterSeconds = 8f;
 
     [Header("Invincible")]
     [SerializeField] private float invincibleSeconds = 1.0f;
-    [SerializeField] private float blinkInterval = 0.12f;
+    [SerializeField] private float blinkInterval = 1f;
 
     [Header("Combat - Bubble Attack")]
     [SerializeField] private AttackProfile currentAttack;
@@ -70,7 +68,6 @@ public class Player1Controller : MonoBehaviour, IPlayerRevive
     [SerializeField] private Transform groundCheck;
     [SerializeField] private Vector2 groundCheckSize = new Vector2(0.5f, 0.08f); // 발바닥 박스
     [SerializeField] private float groundSnapSkin = 0.01f;                       // 바닥에 살짝 띄우기
-    [SerializeField] private float maxSnapUp = 0.25f;                             // 파고들었을 때 올리는 최대치
     [SerializeField] private LayerMask bubbleMask; // BubbleGround 레이어
     [SerializeField] private float snapMaxDistance = 0.25f;
 
@@ -94,7 +91,7 @@ public class Player1Controller : MonoBehaviour, IPlayerRevive
 
     Vector2 moveInput;
 
-    // ✅ 수동 중력용 y속도
+    // 수동 중력용 y속도
     float vy = 0f;
 
     RaycastHit2D[] hits = new RaycastHit2D[6];
@@ -185,6 +182,11 @@ public class Player1Controller : MonoBehaviour, IPlayerRevive
             SetState(State.Sleep);
 
         UpdateAnimation();
+    }
+    void LateUpdate()
+    {
+        if (Time.frameCount < 20)
+            Debug.Log($"[P1 LateUpdate] pos={transform.position}");
     }
 
     void FixedUpdate()

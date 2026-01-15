@@ -92,7 +92,7 @@ Transform:
   m_GameObject: {fileID: 7531316149829045650}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: -6.83, y: -3.45, z: 0}
+  m_LocalPosition: {x: -8.579643, y: -3.610365, z: 0}
   m_LocalScale: {x: 1.2, y: 1.2, z: 1.2}
   m_ConstrainProportionsScale: 1
   m_Children:
@@ -207,11 +207,9 @@ MonoBehaviour:
   oneWayMask:
     serializedVersion: 2
     m_Bits: 256
-  groundCastDistance: 0.08
   ceilingMask:
     serializedVersion: 2
     m_Bits: 512
-  ceilingCastDistance: 0.06
   sleepAfterSeconds: 8
   invincibleSeconds: 1
   blinkInterval: 0.12
@@ -229,7 +227,6 @@ MonoBehaviour:
   groundCheck: {fileID: 7385171226563318698}
   groundCheckSize: {x: 0.5, y: 0.08}
   groundSnapSkin: 0.01
-  maxSnapUp: 0.25
   bubbleMask:
     serializedVersion: 2
     m_Bits: 128
