@@ -6058,7 +6058,7 @@ TextureImporter:
         width: 62
         height: 64
       alignment: 0
-      pivot: {x: 0, y: 0}
+      pivot: {x: 0.5, y: 0.5}
       border: {x: 0, y: 0, z: 0, w: 0}
       customData: 
       outline: []
@@ -6067,6 +6067,72 @@ TextureImporter:
       bones: []
       spriteID: 313dd18c23c3beb4d8935a30ce1fc729
       internalID: -784651536
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: 12593_271
+      rect:
+        serializedVersion: 2
+        x: 100
+        y: 218
+        width: 42
+        height: 48
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: 0
+      bones: []
+      spriteID: 7efb0e5b28dc75840ae1e545263b5265
+      internalID: 1171129443
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: 12593_272
+      rect:
+        serializedVersion: 2
+        x: 147
+        y: 218
+        width: 48
+        height: 48
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: 0
+      bones: []
+      spriteID: 8d8938fe0a4aa5e438d4816e78fe5a2e
+      internalID: 1217505208
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: 12593_273
+      rect:
+        serializedVersion: 2
+        x: 197
+        y: 221
+        width: 48
+        height: 42
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: 0
+      bones: []
+      spriteID: 127433295ba3a36499bcc090a7b150f6
+      internalID: -1183810473
       vertices: []
       indices: 
       edges: []
@@ -6277,6 +6343,9 @@ TextureImporter:
       12593_269: 1024426633
       12593_27: 1482675072
       12593_270: -784651536
+      12593_271: 1171129443
+      12593_272: 1217505208
+      12593_273: -1183810473
       12593_28: -1069459577
       12593_29: -144798613
       12593_3: 343849574

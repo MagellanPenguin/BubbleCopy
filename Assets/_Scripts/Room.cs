@@ -6,8 +6,11 @@ public class Room : MonoBehaviour
     public int id;
 
     [Header("Anchors")]
-    public Transform cameraAnchor;  // 카메라가 멈출 위치
-    public Transform entryPoint;    // 이 방으로 들어올 때 플레이어 위치(선택)
+    public Transform cameraAnchor;   // 카메라가 멈출 위치
+
+    [Header("Entry Points")]
+    public Transform entryPointP1;   // 1P 입장 위치
+    public Transform entryPointP2;   // 2P 입장 위치 
 
     [Header("Neighbors")]
     public Room up;
