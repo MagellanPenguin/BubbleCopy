@@ -129,6 +129,14 @@ MonoBehaviour:
     serializedVersion: 2
     m_Bits: 512
   popEffectPrefab: {fileID: 8156712960223024742, guid: 94a5e1c77736ac94eb868a185695e2db, type: 3}
+  stopScaleWhenCaptured: 1
+  stopHorizontalWhenCaptured: 1
+  popOnWallWhenCaptured: 1
+  normalBubbleVisual: {fileID: 7584811622516897413}
+  capturedBubbleVisual: {fileID: 2613896006651714896, guid: eb9d1f2eb053868418170c6be3cae444, type: 3}
+  playerLayerName: Player
+  playerPopMinUpSpeed: 0.1
+  playerMustBeBelowMargin: 0.05
 --- !u!50 &-4394298799056506728
 Rigidbody2D:
   serializedVersion: 5

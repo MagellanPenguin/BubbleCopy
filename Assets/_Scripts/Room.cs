@@ -6,15 +6,21 @@ public class Room : MonoBehaviour
     public int id;
 
     [Header("Anchors")]
-    public Transform cameraAnchor;   // 카메라가 멈출 위치
+    public Transform cameraAnchor;
 
     [Header("Entry Points")]
-    public Transform entryPointP1;   // 1P 입장 위치
-    public Transform entryPointP2;   // 2P 입장 위치 
+    public Transform entryPointP1;
+    public Transform entryPointP2;
 
     [Header("Neighbors")]
     public Room up;
     public Room down;
     public Room left;
     public Room right;
+
+    [Header("Stage Options")]
+    public bool isBossRoom = false;             // 보스룸이면 타이머 제외
+    public MoveDir nextDir = MoveDir.Right;     // 클리어 시 자동 이동 방향
+
+    public enum MoveDir { Up, Down, Left, Right, None }
 }

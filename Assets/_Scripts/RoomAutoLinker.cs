@@ -9,7 +9,6 @@ public class RoomAutoLinker : MonoBehaviour
     {
         if (rooms == null || rooms.Length < 10)
         {
-            Debug.LogError("rooms에 Room 1~10을 모두 넣어줘");
             return;
         }
 
@@ -61,6 +60,6 @@ public class RoomAutoLinker : MonoBehaviour
             room10.left = room9;
         }
 
-        Debug.Log("✅ AutoLink 완료: Snake 3x3 + 10번 연결");
+        Debug.Log(" AutoLink 완료: Snake 3x3 + 10번 연결");
     }
 }
