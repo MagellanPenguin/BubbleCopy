@@ -30,10 +30,10 @@ public class Player1Controller : MonoBehaviour, IPlayerRevive
     [SerializeField] private Collider2D bodyCollider;
     [SerializeField] private LayerMask groundMask;  // Ground + Wall
     [SerializeField] private LayerMask oneWayMask;  // OneWay
-    
+
     [Header("Ceiling Check")]
-    [SerializeField] private LayerMask ceilingMask;        // Wall 
-    
+    [SerializeField] private LayerMask ceilingMask; // Wall
+
     [Header("Idle/Sleep")]
     [SerializeField] private float sleepAfterSeconds = 8f;
 
@@ -61,13 +61,22 @@ public class Player1Controller : MonoBehaviour, IPlayerRevive
     [SerializeField] private ObjectPool objectPool;
     [SerializeField] private string bubblePoolKey = "Bubble";
 
+    [Header("Boss Battle Override")]
+    [SerializeField] private bool useBossOverride = true;
+    [SerializeField] private string bossBubblePoolKey = "LightningBubble";
+    [SerializeField] private AttackProfile bossAttackProfile;
+
+    string normalBubblePoolKey;
+    AttackProfile normalAttackProfile;
+    bool inBossBattle = false;
+
     [Header("Death")]
     [SerializeField] private float dieDisableDelay = 0.6f;
 
     [Header("GroundCheck Only")]
     [SerializeField] private Transform groundCheck;
-    [SerializeField] private Vector2 groundCheckSize = new Vector2(0.5f, 0.08f); // 발바닥 박스
-    [SerializeField] private float groundSnapSkin = 0.01f;                       // 바닥에 살짝 띄우기
+    [SerializeField] private Vector2 groundCheckSize = new Vector2(0.5f, 0.08f);
+    [SerializeField] private float groundSnapSkin = 0.01f;
     [SerializeField] private LayerMask bubbleMask; // BubbleGround 레이어
     [SerializeField] private float snapMaxDistance = 0.25f;
 
@@ -116,11 +125,14 @@ public class Player1Controller : MonoBehaviour, IPlayerRevive
         rb.simulated = true;
         rb.useFullKinematicContacts = true;
 
-        // ✅ 충돌 안정
         rb.collisionDetectionMode = CollisionDetectionMode2D.Continuous;
         rb.interpolation = RigidbodyInterpolation2D.Interpolate;
 
         BindInputActions();
+
+        // 기본값 백업
+        normalBubblePoolKey = bubblePoolKey;
+        normalAttackProfile = currentAttack;
     }
 
     void OnEnable()
@@ -183,17 +195,11 @@ public class Player1Controller : MonoBehaviour, IPlayerRevive
 
         UpdateAnimation();
     }
-    void LateUpdate()
-    {
-        if (Time.frameCount < 20)
-            Debug.Log($"[P1 LateUpdate] pos={transform.position}");
-    }
 
     void FixedUpdate()
     {
         if (state == State.Die) return;
 
-        // 1) 입력
         float x = moveInput.x;
 
         if (Mathf.Abs(x) > 0.01f)
@@ -202,10 +208,8 @@ public class Player1Controller : MonoBehaviour, IPlayerRevive
             else if (x < 0 && facingRight) Flip(false);
         }
 
-        // 2) 바닥판정
         grounded = IsGrounded();
 
-        // 3) 중력
         if (grounded && vy <= 0f) vy = 0f;
         else
         {
@@ -213,16 +217,11 @@ public class Player1Controller : MonoBehaviour, IPlayerRevive
             vy = Mathf.Clamp(vy, maxFallSpeed, maxRiseSpeed);
         }
 
-        // 4) 이동 적용 (일단 기존대로 속도)
         rb.linearVelocity = new Vector2(x * moveSpeed, vy);
 
-        // 5) 착지 스냅 (상승 중엔 안 함 => 원웨이 머리 걸림 방지)
         SnapToGround();
-
-        // 6) 스냅 후 grounded 갱신
         grounded = IsGrounded();
 
-        // 7) 상태
         if (Time.time >= attackLockUntil)
         {
             if (!grounded)
@@ -247,7 +246,6 @@ public class Player1Controller : MonoBehaviour, IPlayerRevive
             SetState(State.Idle);
         }
 
-        // 입력 순간 grounded 재검사
         if (!IsGrounded()) return;
 
         vy = jumpVelocity;
@@ -298,11 +296,9 @@ public class Player1Controller : MonoBehaviour, IPlayerRevive
         LayerMask mask = groundMask | bubbleMask;
         if (vy <= 0f) mask |= oneWayMask;
 
-        Collider2D col = Physics2D.OverlapBox(groundCheck.position, groundCheckSize, 0f, mask);
-        return col != null;
+        Collider2D col2 = Physics2D.OverlapBox(groundCheck.position, groundCheckSize, 0f, mask);
+        return col2 != null;
     }
-
-
 
     void UpdateAnimation()
     {
@@ -405,12 +401,13 @@ public class Player1Controller : MonoBehaviour, IPlayerRevive
     public void SetAttackProfile(AttackProfile newProfile)
     {
         if (newProfile) currentAttack = newProfile;
+        if (!inBossBattle) normalAttackProfile = currentAttack;
     }
 
     void SnapToGround()
     {
         if (!groundCheck) return;
-        if (vy > 0f) return; // 상승 중엔 스냅 금지
+        if (vy > 0f) return;
 
         LayerMask mask = groundMask | bubbleMask;
         if (vy <= 0f) mask |= oneWayMask;
@@ -439,6 +436,7 @@ public class Player1Controller : MonoBehaviour, IPlayerRevive
             rb.linearVelocity = v;
         }
     }
+
     public void SetControlEnabled(bool enable)
     {
         EnableInputs(enable);
@@ -446,10 +444,31 @@ public class Player1Controller : MonoBehaviour, IPlayerRevive
         if (!enable && rb)
         {
             rb.linearVelocity = Vector2.zero;
-            // vy 쓰면 같이 0으로(공중/원웨이 꼬임 방지)
-            // vy = 0f;
         }
     }
 
+    // ==========================
+    //  보스전 전용 공격 전환 API
+    // ==========================
+    public void EnterBossBattle()
+    {
+        if (!useBossOverride) return;
+        inBossBattle = true;
 
+        // 백업(안전)
+        if (normalAttackProfile == null) normalAttackProfile = currentAttack;
+        if (string.IsNullOrEmpty(normalBubblePoolKey)) normalBubblePoolKey = bubblePoolKey;
+
+        if (bossAttackProfile) currentAttack = bossAttackProfile;
+        if (!string.IsNullOrEmpty(bossBubblePoolKey)) bubblePoolKey = bossBubblePoolKey;
+    }
+
+    public void ExitBossBattle()
+    {
+        if (!useBossOverride) return;
+        inBossBattle = false;
+
+        if (normalAttackProfile) currentAttack = normalAttackProfile;
+        if (!string.IsNullOrEmpty(normalBubblePoolKey)) bubblePoolKey = normalBubblePoolKey;
+    }
 }

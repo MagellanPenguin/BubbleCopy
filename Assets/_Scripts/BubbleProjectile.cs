@@ -9,17 +9,39 @@ public class BubbleProjectile : MonoBehaviour
     string poolKey;
 
     AttackProfile profile;
-    float dir;
+    float dir;                 // +1 / -1
     Vector3 spawnPos;
     float lifeTimer;
 
     bool rising;
+    bool popped = false;
 
     [Header("Layer Masks")]
     [SerializeField] private LayerMask wallMask;
 
     [Header("Pop Effect")]
     [SerializeField] private GameObject popEffectPrefab;
+
+    [Header("Capture")]
+    [SerializeField] private bool stopScaleWhenCaptured = true;
+    [SerializeField] private bool stopHorizontalWhenCaptured = true;
+    [SerializeField] private bool popOnWallWhenCaptured = false;
+    [SerializeField] private float popBlockAfterCapture = 0.15f; // 캡처 직후 즉시 팝 방지
+    CapturableMonster captured;
+    float capturedTime = -999f;
+
+    [Header("Bubble Visuals")]
+    [SerializeField] private GameObject normalBubbleVisual;
+    [SerializeField] private GameObject capturedBubbleVisual;
+
+    [Header("Player Pop (Under hit only)")]
+    [SerializeField] private string playerLayerName = "Player";
+    [SerializeField] private float playerPopMinUpSpeed = 0.1f;
+    [SerializeField] private float playerMustBeBelowMargin = 0.05f;
+    int playerLayer;
+
+    // 외부에서 필요하면 읽기만
+    public float FiredDir => dir;
 
     void Awake()
     {
@@ -33,14 +55,17 @@ public class BubbleProjectile : MonoBehaviour
             rb.simulated = true;
         }
 
-        // ✅ groundCheck로만 밟을 거면 Trigger 권장(물리 충돌 불필요)
         if (col) col.isTrigger = true;
+
+        playerLayer = LayerMask.NameToLayer(playerLayerName);
+        SetBubbleVisual(false);
     }
 
     public void Fire(AttackProfile p, float direction, GameObject owner, string poolKey, ObjectPool pool)
     {
         profile = p;
         dir = Mathf.Sign(direction);
+        if (dir == 0f) dir = 1f;
 
         this.poolKey = poolKey;
         this.pool = pool;
@@ -48,6 +73,10 @@ public class BubbleProjectile : MonoBehaviour
         spawnPos = transform.position;
         lifeTimer = 0f;
         rising = false;
+        popped = false;
+
+        captured = null;
+        capturedTime = -999f;
 
         if (col) col.enabled = true;
 
@@ -56,6 +85,7 @@ public class BubbleProjectile : MonoBehaviour
         if (rb)
             rb.linearVelocity = new Vector2(profile.speed * dir, 0f);
 
+        SetBubbleVisual(false);
         gameObject.SetActive(true);
     }
 
@@ -63,11 +93,15 @@ public class BubbleProjectile : MonoBehaviour
     {
         if (profile == null) return;
 
-        lifeTimer += Time.deltaTime;
-        if (lifeTimer >= profile.maxLifetime)
+        // 캡처 전만 수명으로 자동 Pop
+        if (!captured)
         {
-            Pop();
-            return;
+            lifeTimer += Time.deltaTime;
+            if (lifeTimer >= profile.maxLifetime)
+            {
+                Pop();
+                return;
+            }
         }
 
         float dist = Vector3.Distance(spawnPos, transform.position);
@@ -77,28 +111,106 @@ public class BubbleProjectile : MonoBehaviour
 
         if (rb)
         {
-            rb.linearVelocity = rising
-                ? new Vector2(0f, profile.riseSpeed)
-                : new Vector2(profile.speed * dir, 0f);
+            if (captured && stopHorizontalWhenCaptured)
+                rb.linearVelocity = new Vector2(0f, profile.riseSpeed);
+            else
+                rb.linearVelocity = rising
+                    ? new Vector2(0f, profile.riseSpeed)
+                    : new Vector2(profile.speed * dir, 0f);
         }
 
-        float t = Mathf.Clamp01(dist / profile.maxDistance);
-        transform.localScale = Vector3.one * Mathf.Lerp(profile.startScale, profile.endScale, t);
+        if (!(captured && stopScaleWhenCaptured))
+        {
+            float t = Mathf.Clamp01(dist / profile.maxDistance);
+            transform.localScale = Vector3.one * Mathf.Lerp(profile.startScale, profile.endScale, t);
+        }
     }
 
     void OnTriggerEnter2D(Collider2D other)
     {
-        // 벽 닿으면 Pop만
+        // 1) 몬스터 캡처
+        if (!captured)
+        {
+            var cap = other.GetComponentInParent<CapturableMonster>();
+            if (cap != null && !cap.IsCaptured)
+            {
+                cap.CaptureTo(transform);
+                captured = cap;
+                capturedTime = Time.time;
+                SetBubbleVisual(true);
+                return;
+            }
+        }
+
+        // 2) 플레이어 아래에서 치면 Pop (단, 캡처 직후 잠깐은 금지)
+        if (other.gameObject.layer == playerLayer)
+        {
+            if (captured && Time.time < capturedTime + popBlockAfterCapture)
+                return;
+
+            if (IsPlayerUnderHit(other))
+                Pop();
+
+            return;
+        }
+
+        // 3) 벽
         if (((1 << other.gameObject.layer) & wallMask) != 0)
         {
+            if (captured && !popOnWallWhenCaptured)
+                return;
+
             Pop();
         }
     }
 
+    bool IsPlayerUnderHit(Collider2D playerCol)
+    {
+        float playerY = playerCol.bounds.center.y;
+        float bubbleY = col ? col.bounds.center.y : transform.position.y;
+
+        // 위에서 밟는 건 Pop 금지
+        if (playerY >= bubbleY - playerMustBeBelowMargin)
+            return false;
+
+        var prb = playerCol.attachedRigidbody;
+        if (!prb) return false;
+
+        return prb.linearVelocity.y > playerPopMinUpSpeed;
+    }
+
+    void SetBubbleVisual(bool capturedState)
+    {
+        if (normalBubbleVisual) normalBubbleVisual.SetActive(!capturedState);
+        if (capturedBubbleVisual) capturedBubbleVisual.SetActive(capturedState);
+    }
+
     void Pop()
     {
+        if (popped) return;   //  중복 Pop 방지
+        popped = true;
+
         if (col) col.enabled = false;
 
+        //  (추가) Pop 훅: 번개버블 같은 특수 동작은 여기서 처리
+        var list = GetComponents<MonoBehaviour>();
+        for (int i = 0; i < list.Length; i++)
+        {
+            if (list[i] is IBubblePopHandler handler)
+                handler.OnBubblePop(this, dir);
+        }
+
+        // 캡처된 몬스터는 "Pop 때" 즉사
+        if (captured)
+        {
+            var enemy = captured.GetComponent<EnemyBase>();
+            if (enemy) enemy.TakeDamage(999999f);
+            else Destroy(captured.gameObject);
+
+            captured = null;
+        }
+
+        // Pop FX
         if (popEffectPrefab)
             Instantiate(popEffectPrefab, transform.position, Quaternion.identity);
 

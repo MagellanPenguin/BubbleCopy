@@ -12,6 +12,9 @@ GameObject:
   - component: {fileID: 2729245793311842707}
   - component: {fileID: 382609334658266820}
   - component: {fileID: -6324994053991829642}
+  - component: {fileID: 7129759907556814373}
+  - component: {fileID: -1582324118865117618}
+  - component: {fileID: 715799453001802511}
   m_Layer: 0
   m_Name: ghost1
   m_TagString: Untagged
@@ -141,7 +144,7 @@ BoxCollider2D:
   m_CallbackLayers:
     serializedVersion: 2
     m_Bits: 4294967295
-  m_IsTrigger: 0
+  m_IsTrigger: 1
   m_UsedByEffector: 0
   m_CompositeOperation: 0
   m_CompositeOrder: 0
@@ -157,3 +160,62 @@ BoxCollider2D:
   m_AutoTiling: 0
   m_Size: {x: 0.32, y: 0.32}
   m_EdgeRadius: 0
+--- !u!114 &7129759907556814373
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7068009781073998088}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: bd9a508a1a7764f428c70342c600c7dd, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  maxHp: 10
+  moveSpeed: 2
+  detectRadius: 6
+--- !u!114 &-1582324118865117618
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7068009781073998088}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: db8931486315ece49a67932799e34e0b, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  maxHp: 10
+  moveSpeed: 2
+  detectRadius: 6
+  alwaysChaseSpeed: 3.5
+  retargetInterval: 0.25
+--- !u!50 &715799453001802511
+Rigidbody2D:
+  serializedVersion: 5
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7068009781073998088}
+  m_BodyType: 1
+  m_Simulated: 1
+  m_UseFullKinematicContacts: 0
+  m_UseAutoMass: 0
+  m_Mass: 1
+  m_LinearDamping: 0
+  m_AngularDamping: 0.05
+  m_GravityScale: 1
+  m_Material: {fileID: 0}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_Interpolate: 0
+  m_SleepingMode: 1
+  m_CollisionDetection: 0
+  m_Constraints: 0

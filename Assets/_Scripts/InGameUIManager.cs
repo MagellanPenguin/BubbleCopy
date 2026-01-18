@@ -13,6 +13,13 @@ public class InGameUIManager : MonoBehaviour
     public GameObject p1GameOver;
     public GameObject p2GameOver;
 
+    [Header("Stage Timer")]
+    public TMP_Text stageTimerText;  
+    public float stageTimeSeconds = 120f;
+    bool stageTimerEnabled = false;
+    float stageTimer;
+    bool timerExpiredFired = false;
+
     [Header("Text UI")]
     public TMP_Text p1LifeText;   // "Life : X"
     public TMP_Text p2LifeText;
@@ -84,6 +91,8 @@ public class InGameUIManager : MonoBehaviour
             TryStartOrContinue(2);
 
         UpdateBlink();
+        UpdateStageTimer();
+
     }
 
     // ================= Blink =================
@@ -209,4 +218,56 @@ public class InGameUIManager : MonoBehaviour
         if (p2InsertCoin)
             p2InsertCoin.SetActive(!p2Playing && blinkOn);
     }
+
+    void UpdateStageTimer()
+    {
+        if (!stageTimerEnabled) return;
+
+        stageTimer -= Time.deltaTime;
+        if (stageTimer < 0f) stageTimer = 0f;
+
+        if (stageTimerText)
+        {
+            int sec = Mathf.CeilToInt(stageTimer);
+            int m = sec / 60;
+            int s = sec % 60;
+            stageTimerText.text = $"{m:00}:{s:00}";
+        }
+
+        // 0초 도달 1회 트리거
+        if (!timerExpiredFired && stageTimer <= 0f)
+        {
+            timerExpiredFired = true;
+            StageManager.Instance?.OnStageTimerExpired(); // 특수몹 스폰
+        }
+    }
+
+    public void StartStageTimer()
+    {
+        stageTimerEnabled = true;
+        stageTimer = stageTimeSeconds;
+        timerExpiredFired = false;
+
+        if (stageTimerText)
+            stageTimerText.text = "02:00";
+    }
+
+    public void ResetStageTimer()
+    {
+        stageTimer = stageTimeSeconds;
+        timerExpiredFired = false;
+
+        if (stageTimerText)
+            stageTimerText.text = "02:00";
+    }
+
+    public void DisableStageTimer()
+    {
+        stageTimerEnabled = false;
+        timerExpiredFired = false;
+
+        // 숨기고 싶으면
+        // if (stageTimerText) stageTimerText.gameObject.SetActive(false);
+    }
+
 }
