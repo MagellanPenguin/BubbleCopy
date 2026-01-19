@@ -26,7 +26,7 @@ public class BubbleProjectile : MonoBehaviour
     [SerializeField] private bool stopScaleWhenCaptured = true;
     [SerializeField] private bool stopHorizontalWhenCaptured = true;
     [SerializeField] private bool popOnWallWhenCaptured = false;
-    [SerializeField] private float popBlockAfterCapture = 0.15f; // 캡처 직후 즉시 팝 방지
+    [SerializeField] private float popBlockAfterCapture = 0.15f;
     CapturableMonster captured;
     float capturedTime = -999f;
 
@@ -40,7 +40,6 @@ public class BubbleProjectile : MonoBehaviour
     [SerializeField] private float playerMustBeBelowMargin = 0.05f;
     int playerLayer;
 
-    // 외부에서 필요하면 읽기만
     public float FiredDir => dir;
 
     void Awake()
@@ -93,7 +92,6 @@ public class BubbleProjectile : MonoBehaviour
     {
         if (profile == null) return;
 
-        // 캡처 전만 수명으로 자동 Pop
         if (!captured)
         {
             lifeTimer += Time.deltaTime;
@@ -128,12 +126,14 @@ public class BubbleProjectile : MonoBehaviour
 
     void OnTriggerEnter2D(Collider2D other)
     {
-        // 1) 몬스터 캡처
+        // 1) Monster capture
         if (!captured)
         {
             var cap = other.GetComponentInParent<CapturableMonster>();
             if (cap != null && !cap.IsCaptured)
             {
+                NotifyHit(other, BubbleHitType.MonsterCapture);
+
                 cap.CaptureTo(transform);
                 captured = cap;
                 capturedTime = Time.time;
@@ -142,25 +142,38 @@ public class BubbleProjectile : MonoBehaviour
             }
         }
 
-        // 2) 플레이어 아래에서 치면 Pop (단, 캡처 직후 잠깐은 금지)
+        // 2) Player under-hit triggers pop (with capture block time)
         if (other.gameObject.layer == playerLayer)
         {
             if (captured && Time.time < capturedTime + popBlockAfterCapture)
                 return;
 
             if (IsPlayerUnderHit(other))
+            {
+                NotifyHit(other, BubbleHitType.PlayerUnderHit);
                 Pop();
-
+            }
             return;
         }
 
-        // 3) 벽
+        // 3) Wall
         if (((1 << other.gameObject.layer) & wallMask) != 0)
         {
             if (captured && !popOnWallWhenCaptured)
                 return;
 
+            NotifyHit(other, BubbleHitType.Wall);
             Pop();
+        }
+    }
+
+    void NotifyHit(Collider2D other, BubbleHitType type)
+    {
+        var list = GetComponents<MonoBehaviour>();
+        for (int i = 0; i < list.Length; i++)
+        {
+            if (list[i] is IBubbleHitHandler h)
+                h.OnBubbleHit(this, other, type);
         }
     }
 
@@ -169,7 +182,6 @@ public class BubbleProjectile : MonoBehaviour
         float playerY = playerCol.bounds.center.y;
         float bubbleY = col ? col.bounds.center.y : transform.position.y;
 
-        // 위에서 밟는 건 Pop 금지
         if (playerY >= bubbleY - playerMustBeBelowMargin)
             return false;
 
@@ -187,20 +199,20 @@ public class BubbleProjectile : MonoBehaviour
 
     void Pop()
     {
-        if (popped) return;   //  중복 Pop 방지
+        if (popped) return;
         popped = true;
 
         if (col) col.enabled = false;
 
-        //  (추가) Pop 훅: 번개버블 같은 특수 동작은 여기서 처리
+        // Pop hook (reverse shot, etc.)
         var list = GetComponents<MonoBehaviour>();
         for (int i = 0; i < list.Length; i++)
         {
-            if (list[i] is IBubblePopHandler handler)
-                handler.OnBubblePop(this, dir);
+            if (list[i] is IBubblePopHandler p)
+                p.OnBubblePop(this, dir);
         }
 
-        // 캡처된 몬스터는 "Pop 때" 즉사
+        // kill captured enemy on pop
         if (captured)
         {
             var enemy = captured.GetComponent<EnemyBase>();
@@ -210,7 +222,6 @@ public class BubbleProjectile : MonoBehaviour
             captured = null;
         }
 
-        // Pop FX
         if (popEffectPrefab)
             Instantiate(popEffectPrefab, transform.position, Quaternion.identity);
 
